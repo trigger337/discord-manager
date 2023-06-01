@@ -32,7 +32,6 @@ is_product_installed() {
 
         if [[ -e "$index_file" ]]; then
             if grep -Fxq "$betterdiscord_line" "$index_file"; then
-                echo "HERE1"
                 return 0
             else
                 return 1
