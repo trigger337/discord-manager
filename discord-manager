@@ -1,0 +1,332 @@
+#!/usr/bin/env bash
+
+# Function to check if Discord is installed for the given flavor
+is_product_installed() {
+    local product="$1"
+    local flavor="$2"
+    if [[ "$product" == "discord" ]]; then
+        if [[ -e "/usr/bin/Discord$flavor" && -e "/usr/share/applications/discord$flavor.desktop" && -e "/usr/share/icons/discord$flavor.png" ]]; then
+            return 0
+        else
+            return 1
+        fi
+    elif [[ "$product" == "betterdiscord" ]]; then
+        dcmod="$HOME/.config/discord"
+        case "$flavor" in
+            "")
+                dcmod+="/"
+                ;;
+            "Canary")
+                dcmod+="canary/"
+                ;;
+            "PTB")
+                dcmod+="ptb/"
+                ;;
+        esac
+
+        x_y_z_directory=$(find "$dcmod" -maxdepth 1 -type d -regex '.*/[0-9]+\.[0-9]+\.[0-9]+$' | sort -r | head -n 1)
+
+        dcmod="$x_y_z_directory/modules"
+        index_file="$dcmod/discord_desktop_core/index.js"
+        betterdiscord_line='require("'$HOME'/.config/BetterDiscord/data/betterdiscord.asar");'
+
+        if [[ -e "$index_file" ]]; then
+            if grep -Fxq "$betterdiscord_line" "$index_file"; then
+                echo "HERE1"
+                return 0
+            else
+                return 1
+            fi
+        else
+            return 1
+        fi
+    else
+        return 1
+    fi
+}
+
+detect_package_manager() {
+  if command -v apt-get &>/dev/null; then
+    echo "/usr/bin/apt-get"
+  elif command -v yum &>/dev/null; then
+    echo "/usr/bin/yum"
+  elif command -v dnf &>/dev/null; then
+    echo "/usr/bin/dnf"
+  elif command -v pacman &>/dev/null; then
+    echo "/usr/bin/pacman"
+  elif command -v zypper &>/dev/null; then
+    echo "/usr/bin/zypper"
+  elif command -v apk &>/dev/null; then
+    echo "/usr/bin/apk"
+  elif command -v emerge &>/dev/null; then
+    echo "/usr/bin/emerge"
+  else
+    echo "Unknown package manager"
+  fi
+}
+
+# A whole function for fucking deps
+install_packages() {
+  local package_manager="$1"
+
+  case "$package_manager" in
+    "/usr/bin/apt-get")
+      sudo apt-get install -y libc6 libasound2 libatomic1 libgconf-2-4 libnotify4 libnspr4 libnss3 libstdc++6 libxss1 libxtst6 libappindicator1 ||
+        echo "Error: Failed to install packages. Please manually find and install the missing dependencies."
+      ;;
+
+    "/usr/bin/yum")
+      sudo yum install -y libc6 libasound2 libatomic1 libgconf2 libnotify libnspr4 libnss3 libstdc++6 libXScrnSaver libXtst libappindicator-gtk3 ||
+        echo "Error: Failed to install packages. Please manually find and install the missing dependencies."
+      ;;
+
+    "/usr/bin/dnf")
+      sudo dnf install -y glibc alsa-lib libatomic libgconf nspr nss libstdc++ libXScrnSaver libXtst libappindicator-gtk3 ||
+        echo "Error: Failed to install packages. Please manually find and install the missing dependencies."
+      ;;
+
+    "/usr/bin/pacman")
+      sudo pacman -Sy --noconfirm libc6 libasound2 libatomic libnotify libnspr4 libnss3 libstdc++6 libxss libxtst libappindicator-gtk3 ||
+        echo "Error: Failed to install packages. Please manually find and install the missing dependencies."
+      ;;
+
+    "/usr/bin/zypper")
+      sudo zypper install -y libc6 libasound2 libatomic1 libgconf-2-4 libnotify4 libnspr4 libnss3 libstdc++6 libXScrnSaver libXtst6 libappindicator-gtk3 ||
+        echo "Error: Failed to install packages. Please manually find and install the missing dependencies."
+      ;;
+
+    "/usr/bin/apk")
+      sudo apk add libc6 libasound2 libatomic1 libgconf libnotify libnspr4 libnss3 libstdc++6 libxss libXtst libappindicator-gtk3 ||
+        echo "Error: Failed to install packages. Please manually find and install the missing dependencies."
+      ;;
+
+    "/usr/bin/emerge")
+      sudo emerge -q sys-libs/glibc media-libs/alsa-lib dev-libs/atomic-gcc gnome-base/gconf dev-libs/nspr dev-libs/nss sys-libs/gcc-libstdc++ x11-libs/libXScrnSaver x11-libs/libXtst x11-libs/libXtst gnome-base/libappindicator-gtk3 ||
+        echo "Error: Failed to install packages. Please manually find and install the missing dependencies."
+      ;;
+
+    *)
+      echo "Unknown package manager"
+      ;;
+  esac
+}
+
+# Function to install Discord based on the flavor
+install_product() {
+    local product="$1"
+    local flavor="$2"
+
+    # BetterDiscord stays the same
+    bdurl="https://github.com/BetterDiscord/BetterDiscord/releases/latest/download/betterdiscord.asar"
+
+    # Determine the appropriate URL based on the flavor
+    case "$flavor" in
+        "")
+            dcurl="https://discordapp.com/api/download?platform=linux&format=tar.gz"
+            ;;
+        "Canary")
+            dcurl="https://discordapp.com/api/download/canary?platform=linux&format=tar.gz"
+            ;;
+        "PTB")
+            dcurl="https://discordapp.com/api/download/ptb?platform=linux&format=tar.gz"
+            ;;
+        *)
+            echo "Invalid flavor. Available flavors: Canary, PTB or nothing for stable"
+            return 1
+            ;;
+    esac
+
+    case "$product" in
+        "discord")
+            # Download and install Discord
+            cd ~/
+            mkdir -p ~/.local/bin
+            wget "$dcurl" -O discord.tar.gz
+            tar -xvf discord.tar.gz -C ~/.local/bin
+            sudo ln -s ~/.local/bin/Discord$flavor/discord.png /usr/share/icons/discord$flavor.png
+            sudo ln -s ~/.local/bin/Discord$flavor/Discord$flavor /usr/bin
+
+                # Generate the desktop file based on the flavor
+            mkdir -p ~/.local/share/applications/
+            cat > ~/.local/share/applications/discord$flavor.desktop <<EOL
+[Desktop Entry]
+Name=Discord $flavor
+Exec=/usr/bin/Discord$flavor
+Icon=/usr/share/icons/discord$flavor.png
+Terminal=false
+Type=Application
+Categories=Network;InstantMessaging;
+EOL
+
+            sudo ln -sf ~/.local/share/applications/discord$flavor.desktop /usr/share/applications/discord$flavor.desktop
+
+            echo "Discord$flavor installed successfully!"
+            ;;
+        "betterdiscord")
+            dcmod="$HOME/.config/discord"
+            case "$flavor" in
+            "")
+                dcmod+="/"
+                ;;
+            "Canary")
+                dcmod+="canary/"
+                ;;
+            "PTB")
+                dcmod+="ptb/"
+                ;;
+            esac
+
+            x_y_z_directory=$(find "$dcmod" -maxdepth 1 -type d -regex '.*/[0-9]+\.[0-9]+\.[0-9]+$' | sort -r | head -n 1)
+
+            dcmod="$x_y_z_directory/modules"
+
+            wget "$bdurl" -O betterdiscord.asar
+
+            mkdir -p "$HOME/.config/BetterDiscord/data/"
+            
+            mv betterdiscord.asar "$HOME/.config/BetterDiscord/data/"
+
+            asar_name="$HOME/.config/BetterDiscord/data/betterdiscord.asar"
+
+            printf $'require("%s");\nmodule.exports = require(\'./core.asar\');\n' "${asar_name/\\/\\\\}" > "$dcmod/discord_desktop_core/index.js"
+
+            echo "BetterDiscord for Discord$flavor installed successfully!"
+            ;;
+        "dependencies")
+            package_manager=$(detect_package_manager)
+            install_packages "$package_manager"
+            ;;
+        *)
+            echo "Unknown product $product"
+            ;;
+    esac
+
+}
+
+# Function to remove Discord based on the flavor
+remove_product() {
+    local product="$1"
+    local flavor="$2"
+
+    case "$product" in
+        "discord")
+            if is_product_installed "$product" "$flavor"; then
+                # Remove symbolic links and current installation of Discord
+                sudo rm /usr/bin/Discord$flavor
+                sudo rm -rf ~/.local/bin/Discord$flavor
+                sudo rm /usr/share/applications/discord$flavor.desktop
+
+                # Remove the icon
+                sudo rm /usr/share/icons/discord$flavor.png
+
+                echo "Discord$flavor removed successfully!"
+            else
+                echo "Discord$flavor is not installed."
+            fi
+            ;;
+        "betterdiscord")
+            if is_product_installed "$product" "$flavor"; then
+                dcmod="$HOME/.config/discord"
+                case "$flavor" in
+                    "")
+                        dcmod+="/"
+                        ;;
+                    "Canary")
+                        dcmod+="canary/"
+                        ;;
+                    "PTB")
+                        dcmod+="ptb/"
+                        ;;
+                esac
+
+                x_y_z_directory=$(find "$dcmod" -maxdepth 1 -type d -regex '.*/[0-9]+\.[0-9]+\.[0-9]+$' | sort -r | head -n 1)
+
+                dcmod="$x_y_z_directory/modules"
+                index_file="$dcmod/discord_desktop_core/index.js"
+
+                echo "module.exports = require('./core.asar');" > $index_file
+            else
+                echo "BetterDiscord for Discord$flavor is not installed."
+            fi
+            ;;
+        *)
+            echo "Unknown product $product"
+            ;;
+    esac
+}
+
+# Function to update Discord based on the flavor
+update_product() {
+    local product="$1"
+    local flavor="$2"
+
+    case "$product" in
+        "discord")
+            if is_product_installed "$product" "$flavor"; then
+                # Remove symbolic links
+                sudo rm /usr/bin/Discord$flavor
+                sudo rm /usr/share/applications/discord$flavor.desktop
+
+                # Remove the icon
+                sudo rm /usr/share/icons/discord$flavor.png
+
+                # Overwrite existing installation
+                install_product "$product" "$flavor"
+            else
+                echo "An active installation of Discord$flavor was not detected. Skipping update."
+            fi
+            ;;
+        "betterdiscord")
+            if is_product_installed "$product" "$flavor"; then
+                install_product "$product" "$flavor"
+            else
+                echo "An active installation of BetterDiscord for Discord$flavor was not detected. Skipping update."
+            fi
+            ;;
+        *)
+            echo "Unknown product $product"
+            ;;
+    esac
+}
+
+
+display_help() {
+    echo "Manager for Discord and BetterDiscord"
+    echo "Usage: discord-manager command product flavor"
+    echo "Available commands: help, install, remove, update"
+    echo "Available products: Discord, BetterDiscord, dependencies"
+    echo "Available flavors: Canary, PTB and none for stable. Case sensitive."
+    echo "To perform update of all active installations of all products made with this script, run update full"
+}
+
+# Main script logic
+command="$1"
+product="$2"
+flavor="$3"
+
+case "$command" in
+    "help")
+        display_help
+        ;;
+    "install")
+        install_product "$product" "$flavor"
+        ;;
+    "remove")
+        remove_product "$product" "$flavor"
+        ;;
+    "update")
+        if [[ "$product" == "full" ]]; then
+            update_product "discord" ""
+            update_product "discord" "Canary"
+            update_product "discord" "PTB"
+            update_product "betterdiscord" ""
+            update_product "betterdiscord" "Canary"
+            update_product "betterdiscord" "PTB"
+        else
+            update_product "$product" "$flavor"
+        fi
+        ;;
+    *)
+        display_help
+        ;;
+esac
