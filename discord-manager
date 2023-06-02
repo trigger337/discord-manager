@@ -45,69 +45,21 @@ is_product_installed() {
 }
 
 detect_package_manager() {
-  if command -v apt-get &>/dev/null; then
-    echo "/usr/bin/apt-get"
-  elif command -v yum &>/dev/null; then
-    echo "/usr/bin/yum"
+  if command -v apt &>/dev/null; then
+    echo "Your package manager is apt"
   elif command -v dnf &>/dev/null; then
-    echo "/usr/bin/dnf"
+    echo "Your package manager is dnf"
   elif command -v pacman &>/dev/null; then
-    echo "/usr/bin/pacman"
+    echo "Your package manager is pacman"
   elif command -v zypper &>/dev/null; then
-    echo "/usr/bin/zypper"
+    echo "Your package manager is zypper"
   elif command -v apk &>/dev/null; then
-    echo "/usr/bin/apk"
+    echo "Your package manager is apk"
   elif command -v emerge &>/dev/null; then
-    echo "/usr/bin/emerge"
+    echo "Your package manager is emerge"
   else
-    echo "Unknown package manager"
+    echo "Could not detect your package manager"
   fi
-}
-
-# A whole function for fucking deps
-install_packages() {
-  local package_manager="$1"
-
-  case "$package_manager" in
-    "/usr/bin/apt-get")
-      sudo apt-get install -y libc6 libasound2 libatomic1 libgconf-2-4 libnotify4 libnspr4 libnss3 libstdc++6 libxss1 libxtst6 libappindicator1 ||
-        echo "Error: Failed to install packages. Please manually find and install the missing dependencies."
-      ;;
-
-    "/usr/bin/yum")
-      sudo yum install -y libc6 libasound2 libatomic1 libgconf2 libnotify libnspr4 libnss3 libstdc++6 libXScrnSaver libXtst libappindicator-gtk3 ||
-        echo "Error: Failed to install packages. Please manually find and install the missing dependencies."
-      ;;
-
-    "/usr/bin/dnf")
-      sudo dnf install -y glibc alsa-lib libatomic libgconf nspr nss libstdc++ libXScrnSaver libXtst libappindicator-gtk3 ||
-        echo "Error: Failed to install packages. Please manually find and install the missing dependencies."
-      ;;
-
-    "/usr/bin/pacman")
-      sudo pacman -Sy --noconfirm libc6 libasound2 libatomic libnotify libnspr4 libnss3 libstdc++6 libxss libxtst libappindicator-gtk3 ||
-        echo "Error: Failed to install packages. Please manually find and install the missing dependencies."
-      ;;
-
-    "/usr/bin/zypper")
-      sudo zypper install -y libc6 libasound2 libatomic1 libgconf-2-4 libnotify4 libnspr4 libnss3 libstdc++6 libXScrnSaver libXtst6 libappindicator-gtk3 ||
-        echo "Error: Failed to install packages. Please manually find and install the missing dependencies."
-      ;;
-
-    "/usr/bin/apk")
-      sudo apk add libc6 libasound2 libatomic1 libgconf libnotify libnspr4 libnss3 libstdc++6 libxss libXtst libappindicator-gtk3 ||
-        echo "Error: Failed to install packages. Please manually find and install the missing dependencies."
-      ;;
-
-    "/usr/bin/emerge")
-      sudo emerge -q sys-libs/glibc media-libs/alsa-lib dev-libs/atomic-gcc gnome-base/gconf dev-libs/nspr dev-libs/nss sys-libs/gcc-libstdc++ x11-libs/libXScrnSaver x11-libs/libXtst x11-libs/libXtst gnome-base/libappindicator-gtk3 ||
-        echo "Error: Failed to install packages. Please manually find and install the missing dependencies."
-      ;;
-
-    *)
-      echo "Unknown package manager"
-      ;;
-  esac
 }
 
 # Function to install Discord based on the flavor
@@ -130,7 +82,7 @@ install_product() {
             dcurl="https://discordapp.com/api/download/ptb?platform=linux&format=tar.gz"
             ;;
         *)
-            echo "Invalid flavor. Available flavors: Canary, PTB or nothing for stable"
+            echo "Invalid flavor $flavor. Run list flavors to get a list of available flavors."
             return 1
             ;;
     esac
@@ -191,12 +143,8 @@ EOL
 
             echo "BetterDiscord for Discord$flavor installed successfully!"
             ;;
-        "dependencies")
-            package_manager=$(detect_package_manager)
-            install_packages "$package_manager"
-            ;;
         *)
-            echo "Unknown product $product"
+            echo "Cannot install $product. Unknown product."
             ;;
     esac
 
@@ -249,7 +197,7 @@ remove_product() {
             fi
             ;;
         *)
-            echo "Unknown product $product"
+            echo "Cannot remove $product. Unknown product."
             ;;
     esac
 }
@@ -283,7 +231,7 @@ update_product() {
             fi
             ;;
         *)
-            echo "Unknown product $product"
+            echo "Cannot update $product. Unknown product."
             ;;
     esac
 }
@@ -292,9 +240,9 @@ update_product() {
 display_help() {
     echo "Manager for Discord and BetterDiscord"
     echo "Usage: discord-manager command product flavor"
-    echo "Available commands: help, install, remove, update"
-    echo "Available products: Discord, BetterDiscord, dependencies"
-    echo "Available flavors: Canary, PTB and none for stable. Case sensitive."
+    echo "Available commands: help, list, install, remove, update"
+    echo "Available products: Discord, BetterDiscord"
+    echo "Available lists: dependencies, flavors"
     echo "To perform update of all active installations of all products made with this script, run update full"
 }
 
@@ -325,7 +273,24 @@ case "$command" in
             update_product "$product" "$flavor"
         fi
         ;;
+    "list")
+        case "$product" in
+            "dependencies")
+                echo "Ubuntu package names: libc6 libasound2 libatomic1 libgconf-2-4 libnotify4 libnspr4 libnss3 libstdc++6 libxss1 libxtst6 libappindicator1"
+                echo "Find and install the correct packages using your distribution's package manager"
+                echo "Trying to detect package manager"
+                detect_package_manager
+                ;;
+            "flavors")
+                echo "Canary, PTB, blank for stable. Case sensitive."
+                ;;
+            *)
+                echo "Cannot display a list for $product. Unknown product."
+                ;;
+        esac
+        ;;
     *)
-        display_help
+        echo "Unknown command $command"
+        echo "Use the help command to display the help message."
         ;;
 esac
