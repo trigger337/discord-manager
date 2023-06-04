@@ -11,22 +11,9 @@ is_product_installed() {
             return 1
         fi
     elif [[ "$product" == "betterdiscord" ]]; then
-        dcmod="$HOME/.config/discord"
-        case "$flavor" in
-            "")
-                dcmod+="/"
-                ;;
-            "Canary")
-                dcmod+="canary/"
-                ;;
-            "PTB")
-                dcmod+="ptb/"
-                ;;
-        esac
 
-        x_y_z_directory=$(find "$dcmod" -maxdepth 1 -type d -regex '.*/[0-9]+\.[0-9]+\.[0-9]+$' | sort -r | head -n 1)
+        dcmod=$(build_betterdiscord_directory $flavor)
 
-        dcmod="$x_y_z_directory/modules"
         index_file="$dcmod/discord_desktop_core/index.js"
         betterdiscord_line='require("'$HOME'/.config/BetterDiscord/data/betterdiscord.asar");'
 
@@ -42,6 +29,28 @@ is_product_installed() {
     else
         return 1
     fi
+}
+
+build_betterdiscord_directory(){
+    local flavor="$1"
+    dcmod="$HOME/.config/discord"
+    case "$flavor" in
+        "")
+            dcmod+="/"
+            ;;
+        "Canary")
+            dcmod+="canary/"
+            ;;
+        "PTB")
+            dcmod+="ptb/"
+            ;;
+    esac
+
+    x_y_z_directory=$(find "$dcmod" -maxdepth 1 -type d -regex '.*/[0-9]+\.[0-9]+\.[0-9]+$' | sort -r | head -n 1)
+
+    dcmod="$x_y_z_directory/modules"
+
+    echo "$dcmod"
 }
 
 detect_package_manager() {
@@ -114,22 +123,7 @@ EOL
             echo "Discord$flavor installed successfully!"
             ;;
         "betterdiscord")
-            dcmod="$HOME/.config/discord"
-            case "$flavor" in
-            "")
-                dcmod+="/"
-                ;;
-            "Canary")
-                dcmod+="canary/"
-                ;;
-            "PTB")
-                dcmod+="ptb/"
-                ;;
-            esac
-
-            x_y_z_directory=$(find "$dcmod" -maxdepth 1 -type d -regex '.*/[0-9]+\.[0-9]+\.[0-9]+$' | sort -r | head -n 1)
-
-            dcmod="$x_y_z_directory/modules"
+            dcmod=$(build_betterdiscord_directory $flavor)
 
             wget "$bdurl" -O betterdiscord.asar
 
@@ -173,25 +167,13 @@ remove_product() {
             ;;
         "betterdiscord")
             if is_product_installed "$product" "$flavor"; then
-                dcmod="$HOME/.config/discord"
-                case "$flavor" in
-                    "")
-                        dcmod+="/"
-                        ;;
-                    "Canary")
-                        dcmod+="canary/"
-                        ;;
-                    "PTB")
-                        dcmod+="ptb/"
-                        ;;
-                esac
+                dcmod=$(build_betterdiscord_directory $flavor)
 
-                x_y_z_directory=$(find "$dcmod" -maxdepth 1 -type d -regex '.*/[0-9]+\.[0-9]+\.[0-9]+$' | sort -r | head -n 1)
-
-                dcmod="$x_y_z_directory/modules"
                 index_file="$dcmod/discord_desktop_core/index.js"
 
                 echo "module.exports = require('./core.asar');" > $index_file
+
+                echo "Successfully removed BetterDiscord for Discord$flavor"
             else
                 echo "BetterDiscord for Discord$flavor is not installed."
             fi
@@ -241,9 +223,10 @@ display_help() {
     echo "Manager for Discord and BetterDiscord"
     echo "Usage: discord-manager command product flavor"
     echo "Available commands: help, list, install, remove, update"
-    echo "Available products: Discord, BetterDiscord"
+    echo "Available products: discord, betterdiscord"
     echo "Available lists: dependencies, flavors"
     echo "To perform update of all active installations of all products made with this script, run update full"
+    echo "Everything is case-sensitive!"
 }
 
 # Main script logic
