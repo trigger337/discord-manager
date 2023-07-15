@@ -67,7 +67,7 @@ detect_package_manager() {
   elif command -v emerge &>/dev/null; then
     echo "Your package manager is emerge"
   else
-    echo "Could not detect your package manager"
+    echo "Could not detect your package manager. If you see this message, you can probably figure it out."
   fi
 }
 
@@ -218,15 +218,80 @@ update_product() {
     esac
 }
 
+# Function to run the script in easy mode
+run_easy_mode() {
+    echo "Welcome to the Easy Mode of Discord Manager!"
+    echo ""
+
+    # Prompt for product
+    read -p "Enter the product (discord/betterdiscord): " product
+
+    # Prompt for flavor
+    read -p "Enter the flavor (Canary/PTB/leave blank for stable): " flavor
+
+    # Prompt for action
+    read -p "Enter the action (install/remove/update): " action
+
+    # Validate inputs
+    case "$product" in
+        "discord" | "betterdiscord")
+            ;;
+        *)
+            echo "Invalid product. Please choose either 'discord' or 'betterdiscord'."
+            return 1
+            ;;
+    esac
+
+    case "$action" in
+        "install" | "remove" | "update")
+            ;;
+        *)
+            echo "Invalid action. Please choose either 'install', 'remove', or 'update'."
+            return 1
+            ;;
+    esac
+
+    # Execute the selected action
+    echo ""
+    echo "Running $action for $product ($flavor)..."
+    echo ""
+
+    case "$action" in
+        "install")
+            install_product "$product" "$flavor"
+            ;;
+        "remove")
+            remove_product "$product" "$flavor"
+            ;;
+        "update")
+            update_product "$product" "$flavor"
+            ;;
+    esac
+}
 
 display_help() {
     echo "Manager for Discord and BetterDiscord"
-    echo "Usage: discord-manager command product flavor"
-    echo "Available commands: help, list, install, remove, update"
-    echo "Available products: discord, betterdiscord"
-    echo "Available lists: dependencies, flavors"
-    echo "To perform update of all active installations of all products made with this script, run update full"
-    echo "Everything is case-sensitive!"
+    echo "Usage: discord-manager [command] [product] [flavor]"
+    echo ""
+    echo "Available commands:"
+    echo "  easy        In easy mode Discord Manager will ask one position at a time"
+    echo "  help        Display this help message"
+    echo "  list        Display lists of dependencies and flavors"
+    echo "  install     Install Discord or BetterDiscord"
+    echo "  remove      Remove Discord or BetterDiscord"
+    echo "  update      Update Discord or BetterDiscord"
+    echo ""
+    echo "Available products:"
+    echo "  discord          Official Discord client"
+    echo "  betterdiscord    BetterDiscord client modification"
+    echo ""
+    echo "Available lists:"
+    echo "  dependencies     Display packages* required by Discord to run"
+    echo "  flavors          Display available flavors"
+    echo ""
+    echo "To perform an update of all active installations of all products made with this script, run 'update full'"
+    echo "Note: Everything is case-sensitive!"
+    echo "*package names are for Ubuntu"
 }
 
 # Main script logic
@@ -237,6 +302,9 @@ flavor="$3"
 case "$command" in
     "help")
         display_help
+        ;;
+    "easy")
+        run_easy_mode
         ;;
     "install")
         install_product "$product" "$flavor"
