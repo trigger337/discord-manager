@@ -269,6 +269,11 @@ run_easy_mode() {
     esac
 }
 
+run_vencord_installer() {
+    sh -c "$(curl -sS https://raw.githubusercontent.com/Vendicated/VencordInstaller/main/install.sh)"
+
+}
+
 display_help() {
     echo "Manager for Discord and BetterDiscord"
     echo "Usage: discord-manager [command] [product] [flavor]"
@@ -280,6 +285,7 @@ display_help() {
     echo "  install     Install Discord or BetterDiscord"
     echo "  remove      Remove Discord or BetterDiscord"
     echo "  update      Update Discord or BetterDiscord"
+    echo "  vencord     Run Vencord\'s installer"
     echo ""
     echo "Available products:"
     echo "  discord          Official Discord client"
@@ -339,6 +345,9 @@ case "$command" in
                 echo "Cannot display a list for $product. Unknown product."
                 ;;
         esac
+        ;;
+    "vencord")
+        run_vencord_installer
         ;;
     *)
         echo "Unknown command $command"
